@@ -15,11 +15,11 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 # Example Region
 
-For this example, we will investigate a **2 kb region on chromosome 2A**.
+Suppose, we found a GWAS consistent region in "Chr2A" chromosome at position 13160000 bp. And, we are interested to find the genes present with in the 3kb of the consistent region. 
 
 | Chromosome | Start | End | Size |
 |------------|--------|------|------|
-| Chr2A | 1,000,000 | 1,002,000 | 2 kb |
+| Chr2A | 1,000,000 | 1,003,000 | 3 kb |
 
 Replace these coordinates with the genomic interval associated with your QTL, GWAS consistent region, marker interval, or region of interest.
 
@@ -49,13 +49,13 @@ genome.gtf
 
 ## 3. BLAST Database
 
-NCBI nucleotide database (or any custom nucleotide database).
+NCBI nucleotide database. HPCC server I used has a database for blasting nucloetide sequence (BLASTn) called **core_nt**.  
 
 ```text
 core_nt
 ```
 
-Verify the database:
+Verify the database in your linux environment:
 
 ```bash
 blastdbcmd -db core_nt -info
