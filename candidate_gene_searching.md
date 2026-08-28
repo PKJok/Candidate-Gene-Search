@@ -15,11 +15,15 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 # Example Region
 
-Suppose, we found a GWAS consistent region in "Chr2A" chromosome at position 13160000 bp. And, we are interested to find the genes present with in the 3kb of the consistent region. 
+Suppose we found a GWAS-consistent region on chromosome Chr2A at position 13,160,000 bp and we want to identify the genes located within 3kb of this region. 
+
+| Chromosome | Position (bp) | Position - 1.5kb | Position + 1.5kb |
+|------------|---------------|------------------|------------------|
+|Chr2A | 13,160,000 | 13,158,500 | 13,161,500 |
 
 | Chromosome | Start | End | Size |
 |------------|--------|------|------|
-| Chr2A | 1,000,000 | 1,003,000 | 3 kb |
+| Chr2A | 13,158,500 | 13,161,500 | 3 kb |
 
 Replace these coordinates with the genomic interval associated with your QTL, GWAS consistent region, marker interval, or region of interest.
 
