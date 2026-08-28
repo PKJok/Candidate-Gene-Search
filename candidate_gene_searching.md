@@ -1,10 +1,10 @@
-# Searching for Candidate Gene in a Genomic Region
-### NOTE: I am using local HPCC server's NCBI database to run BLASTn.
+# Searching Candidate Gene
+> ***Note*** : I am using local HPCC server's NCBI database to run BLASTn.
 ## Overview
 
 This workflow identifies potential candidate genes within a genomic region of interest by:
 
-1. Defining a genomic interval.
+1. Define your genomic interval/ know your region of interest.
 2. Extracting exon coordinates from a genome annotation file.
 3. Retrieving exon sequences from the reference genome.
 4. Running BLAST searches against the NCBI nucleotide database.
@@ -17,15 +17,15 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 Suppose we found a GWAS-consistent region on chromosome Chr2A at position 13,160,000 bp and we want to identify the genes located within 3kb of this region. 
 
-| Chromosome | Position (bp) | Position - 1.5kb | Position + 1.5kb |
+| Chromosome | Position (bp) | Position - 3kb | Position + 3kb |
 |------------|---------------|------------------|------------------|
-|Chr2A | 13,160,000 | 13,158,500 | 13,161,500 |
+|Chr2A | 13,160,000 | 13,157,000 | 13,163,000 |
 
 | Chromosome | Start | End | Size |
 |------------|--------|------|------|
-| Chr2A | 13,158,500 | 13,161,500 | 3 kb |
+| Chr2A | 13,157,000 | 13,163,000 | 6 kb |
 
-Replace these coordinates with the genomic interval associated with your QTL, GWAS consistent region, marker interval, or region of interest.
+> ***Note***: Replace these coordinates with the genomic interval associated with your QTL, GWAS consistent region, marker interval, or region of interest.
 
 ---
 
@@ -43,7 +43,7 @@ genome.fa
 
 ## 2. Genome Annotation File
 
-Genome annotation in GTF format.
+Genome annotation in GTF/GFF format.
 
 ```text
 genome.gtf
@@ -51,28 +51,11 @@ genome.gtf
 
 ---
 
-## 3. BLAST Database
-
-NCBI nucleotide database. HPCC server I used has a database for blasting nucloetide sequence (BLASTn) called **core_nt**.  
-
-```text
-core_nt
-```
-
-Verify the database in your linux environment:
-
-```bash
-blastdbcmd -db core_nt -info
-```
-
----
-
-# Software Requirements
+## 3. Software Requirements
 
 ```bash
 bedtools
 BLAST+ (v2.16.0 or later)
-awk
 ```
 
 Load modules:
@@ -81,6 +64,24 @@ Load modules:
 module load bedtools
 module load blast+/2.16.0
 ```
+
+## 4. BLAST Database
+
+NCBI nucleotide database. HPCC server I used has a database for blasting nucloetide sequence (BLASTn) called **core_nt**. 
+
+```text
+core_nt
+```
+
+Verify the NCBI database of HPCC server in your linux environment:
+>***Note*** : On HPCC server I used, NCBI database is host-integrated with blast+ version 2.16.0 or above. 
+
+```bash
+module load blast+/2.16.0
+blastdbcmd -db core_nt -info
+```
+
+---
 
 ---
 
@@ -92,20 +93,8 @@ Set the chromosome and coordinates of the target interval.
 
 ```bash
 CHR="Chr2A"
-START=1000000
-END=1002000
-```
-
-Calculate interval size:
-
-```bash
-echo $((END-START))
-```
-
-Expected output:
-
-```text
-2000
+START=13158500
+END=13161500
 ```
 
 ---
@@ -133,10 +122,50 @@ region_exons.bed
 Example:
 
 ```text
-Chr2A    1000150    1000450
-Chr2A    1000800    1001100
-```
+Chr2A    13158620    13158950
+Chr2A    13160175    13160490
 
+```
+### Understanding the `awk` Command ###
+
+#### `-v OFS="\t"`
+
+Sets the **Output Field Separator (OFS)** to a tab character (`\t`). This ensures that the output is written as **tab-separated values**, which is the standard format required for BED files.
+
+---
+
+#### `-v chr="$CHR" -v start="$START" -v end="$END"`
+
+Passes the shell variables (`$CHR`, `$START`, and `$END`) into `awk` as internal variables (`chr`, `start`, and `end`), allowing them to be used within the filtering conditions.
+
+---
+
+#### `$1==chr && $3=="exon" && $4>=start && $5<=end`
+
+Applies the following filters to each line of the GTF file:
+
+| Condition | Description |
+|------------|------------|
+| `$1 == chr` | Chromosome name (Column 1) matches the target chromosome. |
+| `$3 == "exon"` | Feature type (Column 3) is an exon. |
+| `$4 >= start` | Exon start coordinate (Column 4) is greater than or equal to the region start position. |
+| `$5 <= end` | Exon end coordinate (Column 5) is less than or equal to the region end position. |
+
+Only exons that satisfy **all four conditions** are retained.
+
+---
+
+#### `{print $1,$4,$5}`
+
+Prints the selected records in a **3-column BED format**:
+
+| Output Column | Description |
+|---------------|-------------|
+| `$1` | Chromosome name |
+| `$4` | Exon start position |
+| `$5` | Exon end position |
+
+The resulting file can be directly used as input for tools such as **BEDTools**.
 ---
 
 ## Step 3. Extract Exon Sequences
