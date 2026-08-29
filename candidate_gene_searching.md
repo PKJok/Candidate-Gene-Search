@@ -328,8 +328,7 @@ gtf_file <- read.table("genome.gtf", sep = "\t", header = FALSE)
 colnames(gtf_file) <- c(
   "seqid", "source", "type",
   "start", "end", "score",
-  "strand", "phase", "attribute"
-)
+  "strand", "phase", "attribute")
 ```
 
 ### Prepare the GTF Annotation
@@ -351,18 +350,17 @@ outfmt6_colnames <- c(
   "qseqid", "sseqid", "pident",
   "length", "mismatch", "gapopen",
   "qstart", "qend", "sstart",
-  "send", "evalue", "bitscore"
-)
+  "send", "evalue", "bitscore")
 
-colnames(CT1163_blast) <- outfmt6_colnames
+colnames(exon_blast_result) <- outfmt6_colnames
 ```
 
 ### Merge All Information
 
 ```r
-CT1163_final_df <- CT1163_blast %>%
+final_df <- exon_blast_result %>%
  left_join(
-    CT1163_titles,
+    accession_titles,
     by = c("sseqid" = "id"),
     relationship = "many-to-many") %>%
   mutate(
@@ -394,7 +392,7 @@ CT1163_final_df <- CT1163_blast %>%
   ungroup()
 ```
 
-### Explanation of the Workflow
+### Explanation of the R Workflow
 
 | Step | Purpose |
 |--------|----------|
@@ -410,9 +408,19 @@ CT1163_final_df <- CT1163_blast %>%
 ### Output
 
 ```r
-head(CT1163_final_df)
+head(final_df)
 ```
+Example:
 
+```text
+qseqid	sseqid	pident	length	mismatch	gapopen	qstart	qend	sstart	send	evalue	bitscore	description	exon
+Chr3B:8825429-8826763	CP137587.1	80.846	851	105	23	499	1303	24628072	24627234	4.28E-171	616	Eragrostis tef cultivar Dabbi chromosome 3B	Chr3B_Cda01350.1-2
+Chr3B:8825429-8826763	CP137586.1	81.356	708	76	26	652	1312	26067452	26066754	7.41E-144	525	Eragrostis tef cultivar Dabbi chromosome 3A	Chr3B_Cda01350.1-2
+Chr3B:8825429-8826873	CP137587.1	79.49	980	140	26	499	1431	24628072	24627107	2.75E-178	640	Eragrostis tef cultivar Dabbi chromosome 3B	Chr3B_Cda01350.2-2
+Chr3B:8825429-8826873	CP137586.1	81.356	708	76	26	652	1312	26067452	26066754	8.04E-144	525	Eragrostis tef cultivar Dabbi chromosome 3A	Chr3B_Cda01350.2-2
+Chr3B:8833583-8833738	CP137586.1	84.314	153	12	7	1	153	26059337	26059197	1.05E-28	139	Eragrostis tef cultivar Dabbi chromosome 3A	Chr3B_Cda01352.1-1
+....
+```
 
 
 This table represents the final candidate-gene annotation dataset used for downstream biological interpretation.
@@ -436,8 +444,8 @@ GFF_FILE="genome.gtf"
 REF_GENOME="genome.fa"
 
 CHR="Chr2A"
-START=1000000
-END=1002000
+START=13150000
+END=13170000
 
 echo "Extracting exons..."
 
@@ -525,7 +533,5 @@ Extract Accessions
         │
         ▼
 Retrieve Annotations
-        │
-        ▼
-Identify Candidate Genes
+  
 ```
