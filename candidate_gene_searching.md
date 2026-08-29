@@ -15,15 +15,15 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 # Example Region
 
-Suppose we found a GWAS-consistent region on chromosome Chr2A at position 13,160,000 bp and we want to identify the genes located within 3kb of this region. 
+Suppose we found a GWAS-consistent region on chromosome Chr2A at position 13,160,000 bp and we want to identify the genes located within 20kb of this region. 
 
-| Chromosome | Position (bp) | Position - 3kb | Position + 3kb |
+| Chromosome | Position (bp) | Position - 10kb | Position + 10kb |
 |------------|---------------|------------------|------------------|
-|Chr2A | 13,160,000 | 13,157,000 | 13,163,000 |
+|Chr2A | 13,160,000 | 13,150,000 | 13,170,000 |
 
 | Chromosome | Start | End | Size |
 |------------|--------|------|------|
-| Chr2A | 13,157,000 | 13,163,000 | 6 kb |
+| Chr2A | 13,150,000| 13,170,000 | 20 kb |
 
 > ***Note***: Replace these coordinates with the genomic interval associated with your QTL, GWAS consistent region, marker interval, or region of interest.
 
@@ -93,8 +93,8 @@ Set the chromosome and coordinates of the target interval.
 
 ```bash
 CHR="Chr2A"
-START=13158500
-END=13161500
+START= 13150000
+END=13170000
 ```
 
 ---
@@ -122,8 +122,11 @@ region_exons.bed
 Example:
 
 ```text
-Chr2A    13158620    13158950
-Chr2A    13160175    13160490
+Chr2A 13154242 13156423
+Chr2A 13167915 13168522
+Chr2A 13168927 13169155
+Chr2A 13169256 13169504
+Chr2A 13169597 13169647
 
 ```
 ### Understanding the `awk` Command ###
