@@ -491,45 +491,7 @@ echo "Analysis completed."
 
 ---
 
-# Input and Output Files
 
-## Input Files
-
-```text
-genome.fa
-genome.gtf
-core_nt
-```
-
-## Output Files
-
-```text
-region_exons.bed
-region_exons.fa
-exon_blast_results.tsv
-accession_ids.tsv
-accession_titles.tsv
-```
-
----
-
-# Workflow Summary
-
-```text
-Region of Interest
-        │
-        ▼
-Extract Exons from GTF
-        │
-        ▼
-Retrieve Sequences
-        │
-        ▼
-BLAST Search
-        │
-        ▼
-Extract Accessions
-        │
         ▼
 Retrieve Annotations
   
