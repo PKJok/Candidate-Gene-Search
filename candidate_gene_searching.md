@@ -108,8 +108,7 @@ awk -v OFS="\t" \
 -v chr="$CHR" \
 -v start="$START" \
 -v end="$END" \
-'$1==chr && $3=="exon" && $4>=start && $5<=end \
-{print $1,$4,$5}' \
+'$1==chr && $3=="exon" && $4>=start && $5<=end {print $1,$4,$5}' \
 genome.gtf > region_exons.bed
 ```
 
