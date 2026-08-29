@@ -93,7 +93,7 @@ Set the chromosome and coordinates of the target interval.
 
 ```bash
 CHR="Chr2A"
-START= 13150000
+START=13150000
 END=13170000
 ```
 
@@ -127,7 +127,6 @@ Chr2A 13167915 13168522
 Chr2A 13168927 13169155
 Chr2A 13169256 13169504
 Chr2A 13169597 13169647
-
 ```
 ### Understanding the `awk` Command ###
 
@@ -145,7 +144,7 @@ Passes the shell variables (`$CHR`, `$START`, and `$END`) into `awk` as internal
 
 #### `$1==chr && $3=="exon" && $4>=start && $5<=end`
 
-Applies the following filters to each line of the GTF file:
+Applies the following filters to each line of the GTF/GFF file:
 
 | Condition | Description |
 |------------|------------|
@@ -160,7 +159,7 @@ Only exons that satisfy **all four conditions** are retained.
 
 #### `{print $1,$4,$5}`
 
-Prints the selected records in a **3-column BED format**:
+Prints the selected records og GTF/GFF file in a **3-column BED format**:
 
 | Output Column | Description |
 |---------------|-------------|
@@ -168,7 +167,7 @@ Prints the selected records in a **3-column BED format**:
 | `$4` | Exon start position |
 | `$5` | Exon end position |
 
-The resulting file can be directly used as input for tools such as **BEDTools**.
+> The resulting file can be directly used as input for tools such as **BEDTools**.
 ---
 
 ## Step 3. Extract Exon Sequences
@@ -191,8 +190,13 @@ region_exons.fa
 Example:
 
 ```fasta
->Chr2A:1000150-1000450
-ATGCGATCGATCGATCGATCGATCG...
+>Chr2A:13154242-13156423
+GCCAAGTAGAGAGGTCCAACAGATAGTGTCAACGAAATGGAAATTAACAAAGCCGATCAA
+CAGTTATCAAAATTAGGCCACTCCGTGCATGCTGGATGAACT..................
+>Chr2A:13167915-13168522
+TTGGAATACCGTTTTTGTTCCTGAGCCGGAAGATCCCATACGCACTTTTCCAGCGACAAA
+ACTCCAAAAAGAACACAGATATGCTCATCCGACGGCGTAAAC..................
+..........
 ```
 
 ---
@@ -215,17 +219,21 @@ Output:
 ```text
 exon_blast_results.tsv
 ```
+Example:
 
+```.tsv file
+Chr2A:13154242-13156423 CP137581.1      86.735  294     24      3       3       281     10615510        10615217        1.19e-80        313
+Chr2A:13167915-13168522 CP137580.1      91.150  113     10      0       7       119     13473675        13473563        2.64e-33        154
+.......
+```
 ---
 
 ## Step 5. Extract Unique Accession IDs
 
-Retrieve unique subject accession IDs from the BLAST output.
+Since ```blastn``` outputs only NCBI accession IDs, we must retrieve the descriptions for each ID. We will first take out the all unique NCBI accesion IDs from the output.
 
 ```bash
-cut -f2 exon_blast_results.tsv \
-| sort -u \
-> accession_ids.tsv
+cut -f2 exon_blast_results.tsv | sort -u > accession_ids.tsv
 ```
 
 Output:
@@ -233,7 +241,16 @@ Output:
 ```text
 accession_ids.tsv
 ```
+Example:
 
+```_ids.tsv
+NM_001365546.1
+XM_987654
+PP763331.1
+NM_001361952.1
+CP137586.1
+....
+```
 ---
 
 ## Step 6. Retrieve Hit Annotations
@@ -257,31 +274,152 @@ accession_titles.tsv
 Example:
 
 ```text
-XM_123456    Auxin-responsive protein IAA17
-XM_987654    ABC transporter family protein
-XM_555555    Heat shock protein 70
+NM_001365546.1        Zea mays Auxin response factor 3 (LOC100502387), mRNA
+XM_987654        ABC transporter family protein
+PP763331.1        Cymbopogon flexuosus clone 1907 auxin response factor ARF12 mRNA, complete cds
+NM_001361952.1        Zea mays auxin response factor 11 (ARF11) gene, complete cds
+CP137586.1        Eragrostis tef cultivar Dabbi chromosome 3A
 ```
 
 ---
 
-## Step 7. Identify Candidate Genes
+---
 
-Review the annotations and prioritize genes based on their known biological functions.
+## Step 7. Merge BLAST Results, Annotations, and Exon Information in R
 
-Examples of relevant candidate gene categories:
+After obtaining the BLAST results and accession descriptions, I used R to combine:
 
-| Trait of Interest | Candidate Gene Types |
-|------------------|---------------------|
-| Root growth | Auxin signaling genes |
-| Shoot growth | Cytokinin signaling genes |
-| Flowering time | FT, CO, FLC genes |
-| Stress tolerance | HSP, WRKY, NAC genes |
-| Disease resistance | NBS-LRR genes |
-| Plant architecture | Gibberellin pathway genes |
+1. BLAST alignment results (`exon_blast_results.tsv`)
+2. Accession descriptions (`accession_titles.tsv`)
+3. Genome annotation information (`genome.gtf`)
+
+This step creates a comprehensive table containing:
+- Exon IDs, BLAST hits, Functional descriptions, Alignment statistics (e-value, percent identity, bitscore, etc.)
+
+### Required Files
+> Just download the files from linux environment and load in R. 
+```text
+exon_blast_results.tsv
+accession_titles.tsv
+genome.gtf
+```
+
+### Load Required Package
+
+```r
+install.packages("tidyverse")
+library(tidyverse)
+```
+
+### Read Input Files
+
+```r
+# load BLASTn output in R environemt
+exon_blast_result <- read.table("exon_blast_results.tsv")
+
+# load accession descriptions in R
+accession_titles <- read_tsv("accession_titles.tsv", col_names = FALSE) %>%
+  separate(X1, into = c("id", "description"),sep = "\\\\t|\\t")
+
+# load genome annotation file in R
+gtf_file <- read.table("genome.gtf", sep = "\t", header = FALSE)
+
+# setting the column names of gtf_file
+colnames(gtf_file) <- c(
+  "seqid", "source", "type",
+  "start", "end", "score",
+  "strand", "phase", "attribute"
+)
+```
+
+### Prepare the GTF Annotation
+
+Create a genomic location identifier that can be matched to the exon coordinates extracted earlier.
+
+```r
+gtf_file <- gtf_file %>%
+  mutate(location = paste0(start, "-", end)) %>%
+  select(location, attribute, type)
+```
+
+### Assign BLAST Column Names
+
+The BLAST output was generated using `-outfmt 6`, which contains 12 standard columns.
+
+```r
+outfmt6_colnames <- c(
+  "qseqid", "sseqid", "pident",
+  "length", "mismatch", "gapopen",
+  "qstart", "qend", "sstart",
+  "send", "evalue", "bitscore"
+)
+
+colnames(CT1163_blast) <- outfmt6_colnames
+```
+
+### Merge All Information
+
+```r
+CT1163_final_df <- CT1163_blast %>%
+ left_join(
+    CT1163_titles,
+    by = c("sseqid" = "id"),
+    relationship = "many-to-many") %>%
+  mutate(
+    location = str_split_i(qseqid, ":", 2)) %>%
+  left_join(
+    gtf_file, by = "location",relationship = "many-to-many") %>%
+  mutate(
+    gene_id = sub(
+      ".*gene_id ([^;]+);.*",
+      "\\1",
+      attribute)) %>%
+  select(
+    !c(location, sstart, send, attribute)) %>%
+  filter(
+    type == "exon",
+    !str_detect(description, "PREDICTED"),
+    !str_detect(description, "hypothetical"),
+    !str_detect(description, "chromosome"),
+    !str_detect(description, "predicted protein")) %>%
+  filter(
+    length > 30,
+    evalue < 1e-10) %>%
+  distinct(
+    qseqid,
+    description,
+    .keep_all = TRUE) %>%
+  group_by(qseqid) %>%
+  slice_head(n = 10) %>%
+  ungroup()
+```
+
+### Explanation of the Workflow
+
+| Step | Purpose |
+|--------|----------|
+| Join BLAST hits with accession titles | Adds functional descriptions to each BLAST hit. |
+| Extract exon coordinates from `qseqid` | Creates a common key for merging. |
+| Join with GTF annotations | Links each exon to its genomic annotation. |
+| Extract `gene_id` | Retrieves the corresponding gene identifier from the GTF attributes column. |
+| Remove low-quality annotations | Excludes predicted, hypothetical, and chromosome-level descriptions. |
+| Apply alignment filters | Retains hits with alignment length > 30 bp and e-value < 1e-10. |
+| Remove duplicate descriptions | Keeps unique functional annotations per exon. |
+| Retain top hits | Limits the output to the first 10 hits per exon. |
+
+### Output
+
+```r
+head(CT1163_final_df)
+```
+
+
+
+This table represents the final candidate-gene annotation dataset used for downstream biological interpretation.
 
 ---
 
-# Complete SLURM Script
+# Complete Linux Script
 
 ```bash
 #!/bin/bash
