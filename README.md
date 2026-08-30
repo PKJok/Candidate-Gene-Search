@@ -15,15 +15,13 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 # Example Region
 
-Suppose we found a GWAS-consistent region on chromosome Chr2A at position 13,160,000 bp and we want to identify the genes located within 20kb of this region. 
+Suppose we found a GWAS-consistent regions on chromosome Chr2A, Chr3A, and Chr6B at position 13,160,000 bp, 2,516,000 bp, 27,209,000 bp respectively and we want to identify the genes located within 20kb of this regions. 
 
-| Chromosome | Position (bp) | Position - 10kb | Position + 10kb |
+| Chromosome | Position (bp) | Position - 10kb (start) | Position + 10kb (End) |
 |------------|---------------|------------------|------------------|
 |Chr2A | 13,160,000 | 13,150,000 | 13,170,000 |
-
-| Chromosome | Start | End | Size |
-|------------|--------|------|------|
-| Chr2A | 13,150,000| 13,170,000 | 20 kb |
+| Chr3A | 2,516,000 | 2,506,000 | 2,526,000 |
+| Chr6B | 27,209,000 | 27,199,000 | 27,219,000 |
 
 > ***Note***: Replace these coordinates with the genomic interval associated with your QTL, GWAS consistent region, marker interval, or region of interest.
 
@@ -67,14 +65,14 @@ module load blast+/2.16.0
 
 ## 4. BLAST Database
 
-NCBI nucleotide database. HPCC server I used has a database for blasting nucloetide sequence (BLASTn) called **core_nt**. 
+We need NCBI nucleotide sequence database to blast against (blastn). HPCC server I used has a database for blasting nucloetide sequence (BLASTn) called **core_nt**. 
 
 ```text
 core_nt
 ```
 
 Verify the NCBI database of HPCC server in your linux environment:
->***Note*** : On HPCC server I used, NCBI database is host-integrated with blast+ version 2.16.0 or above. 
+>***Note*** : On HPCC server I used, NCBI database is host-integrated with blast+ version 2.16.0 or above. So, when you load the blast+/2.16.0 NCBi database is also loaded.
 
 ```bash
 module load blast+/2.16.0
@@ -89,16 +87,44 @@ blastdbcmd -db core_nt -info
 
 ## Step 1. Define the Genomic Region
 
-Set the chromosome and coordinates of the target interval.
+We formed a bash array contatining 3 string elements. Each element holds space-separated genomic coordinates. 
 
 ```bash
-CHR="Chr2A"
-START=13150000
-END=13170000
+regions=(
+  "Chr2A 13150000 13170000"
+  "Chr3A 2506000 2526000 "
+  "Chr6B 27199000  27219000" )
 ```
 
 ---
+## Step 2. Running the loop to extract the sequences from all the regions
+We also formed a ```for``` loop that iterates over each element in the ```regions``` array.
 
+```bash
+for region in "${regions[@]}" ; do
+    read -r CHROM START END <<< "$region"
+    PREFIX="${CHROM}_${START}"
+
+    echo "$PREFIX"
+    echo "$CHROM"
+    echo "$START"
+    echo "$END"
+    ..............
+    .............
+ done
+
+```
+### Understanding the ```loop``` code
+``` bash
+read -r CHROM START END <<< "$region"
+```
+#### This ```read``` command with a Here-String (```<<<```) splits the ```$region``` string by spaces into three distinct variables: ```$CHROM```,```$START```,and ```$END```.
+
+``` bash
+PREFIX="${CHROM}_${START}"
+````
+#### Combines the chromosome name and start coordinate with an underscore (e.g.,```Chr2A_13150000```) to create unique prefix for naming file.
+---
 ## Step 2. Extract Exons from the Region
 
 Extract exon coordinates located within the target interval.
