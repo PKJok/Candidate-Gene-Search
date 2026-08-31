@@ -109,8 +109,7 @@ for region in "${regions[@]}" ; do
     echo "$CHROM"
     echo "$START"
     echo "$END"
-    ..............
-    .............
+    ....
  done
 
 ```
@@ -484,61 +483,67 @@ This table represents the final candidate-gene annotation dataset used for downs
 
 ```bash
 #!/bin/bash
-#SBATCH --job-name="Candidate_Gene_Search"
+#SBATCH --job-name="Ultimate blast searching"
 #SBATCH -p bigmem
 #SBATCH -t 168:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=32
+#SBATCH --mail-user=prajjwal.koirala10@okstate.edu
+#SBATCH --mail-type=end
 
+# module load
+#echo "Loading modules .........................................."
 module load bedtools
 module load blast+/2.16.0
+which blastn
+blastn -version
 
-GFF_FILE="genome.gtf"
-REF_GENOME="genome.fa"
+# Important Files
+echo "lodaing files .........................................."
+GFF_FILE="/scratch/pkjok/Candidate_gene/Fianl.bionano.newID.gff"
+REF_GENOME="/scratch/pkjok/Candidate_gene/annotated_ref.fasta"
 
-CHR="Chr2A"
-START=13150000
-END=13170000
 
-echo "Extracting exons..."
+# Input your Chromosome and region of interest
+regions=(
+  "Chr2A 42616966 42651766"
+  "Chr2A 2516870 2551670"
+  "Chr6B 27209288 28067548" )
 
-awk -v OFS="\t" \
--v chr="$CHR" \
--v start="$START" \
--v end="$END" \
-'$1==chr && $3=="exon" && $4>=start && $5<=end \
-{print $1,$4,$5}' \
-$GFF_FILE > region_exons.bed
+for region in "${regions[@]}" ; do
+    read -r CHROM START END <<< "$region"
+    PREFIX="${CHROM}_${START}"
 
-echo "Extracting sequences..."
+    echo "$PREFIX"
+    echo "$CHROM"
+    echo "$START"
+    echo "$END"
 
-bedtools getfasta \
--fi $REF_GENOME \
--bed region_exons.bed \
--fo region_exons.fa
+    # extracting the exons coordinates with in our region of interest and saving as bed file
+    echo "extracting the bed file................"
+    awk -v OFS="\t" -v chrom="$CHROM" -v start="$START" -v end="$END" \
+    '$1==chrom && $3=="exon" &&  $4>=start && $5<=end {print $1, $4-1, $5}' "$GFF_FILE" > "${PREFIX}.bed"
 
-echo "Running BLAST..."
+    echo "extracting the sequences from bed file........"
+    bedtools getfasta -fi "$REF_GENOME" -bed "${PREFIX}.bed" -fo "${PREFIX}_exons.seqs"
 
-blastn \
--query region_exons.fa \
--db core_nt \
--outfmt 6 \
--num_threads 32 \
--out exon_blast_results.tsv
+    # running the blastn
+    echo "running blastn ..............................."
+     # blastn \
+    # -query "${PREFIX}_exons.seqs" \
+    # -db core_nt \
+    # -outfmt 6 \
+    # -num_threads 32 \
+    # -out "${PREFIX}_exon_blast_results.tsv"
 
-echo "Retrieving accession IDs..."
+    # getting IDS for getting the accession title
+    cut -f 2 "${PREFIX}_exon_blast_results.tsv" > "${PREFIX}_IDs.tsv"
 
-cut -f2 exon_blast_results.tsv \
-| sort -u \
-> accession_ids.tsv
+    # get accession titles
+    echo "Getting accession titles ..................."
+    blastdbcmd -db core_nt -entry_batch "${PREFIX}_IDs.tsv" -outfmt "%a\t%t" > "${PREFIX}_titles.tsv"
 
-echo "Retrieving annotations..."
-
-blastdbcmd \
--db core_nt \
--entry_batch accession_ids.tsv \
--outfmt "%a\t%t" \
-> accession_titles.tsv
+done
 
 echo "Analysis completed."
 ```
