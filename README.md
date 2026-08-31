@@ -82,7 +82,7 @@ blastdbcmd -db core_nt -info
 ---
 
 # Workflow for Bash Script
-
+>***Note***: Whole script is provided below this read.md file.
 ## Step 1. Define the Genomic Region
 
 We formed a bash array contatining 3 string elements. Each element holds space-separated genomic coordinates. 
@@ -96,7 +96,7 @@ regions=(
 
 ---
 ## Step 2. Running the loop to extract the sequences from all the regions
-We also formed a ```for``` loop that iterates over each element in the ```regions``` array.
+We also formed a ```for``` ..... ```done``` loop that iterates over each element in the ```regions``` array.
 
 ```bash
 for region in "${regions[@]}" ; do
@@ -414,7 +414,7 @@ final_df <- exon_blast_result %>%
  left_join(
     accession_titles,
     by = c("sseqid" = "id"),
-    relationship = "many-to-many") %>%
+    relationship = "many-to-many") %>% 
   mutate(
     location = str_split_i(qseqid, ":", 2)) %>%
   left_join(
@@ -431,7 +431,7 @@ final_df <- exon_blast_result %>%
     !str_detect(description, "PREDICTED"),
     !str_detect(description, "hypothetical"),
     !str_detect(description, "chromosome"),
-    !str_detect(description, "predicted protein")) %>%
+    !str_detect(description, "predicted protein")) %>% # filtering out the "predicted and Hypothetical" 
   filter(
     length > 30,
     evalue < 1e-10) %>%
@@ -440,7 +440,7 @@ final_df <- exon_blast_result %>%
     description,
     .keep_all = TRUE) %>%
   group_by(qseqid) %>%
-  slice_head(n = 10) %>%
+  slice_head(n = 5) %>%  # this only keeps 5 results from the single query
   ungroup()
 ```
 
@@ -450,7 +450,7 @@ final_df <- exon_blast_result %>%
 |--------|----------|
 | Join BLAST hits with accession titles | Adds functional descriptions to each BLAST hit. |
 | Extract exon coordinates from `qseqid` | Creates a common key for merging. |
-| Join with GTF annotations | Links each exon to its genomic annotation. |
+| Join with GTF annotations | Links each ```exon``` to its genomic annotation. |
 | Extract `gene_id` | Retrieves the corresponding gene identifier from the GTF attributes column. |
 | Remove low-quality annotations | Excludes ```predicted```, ```hypothetical```, and ```chromosome-level descriptions```. |
 | Apply alignment filters | Retains hits with alignment ```length > 30 bp``` and ```e-value < 1e-10```. |
@@ -523,7 +523,7 @@ for region in "${regions[@]}" ; do
     # extracting the exons coordinates with in our region of interest and saving as bed file
     echo "extracting the bed file................"
     awk -v OFS="\t" -v chrom="$CHROM" -v start="$START" -v end="$END" \
-    '$1==chrom && $3=="exon" &&  $4>=start && $5<=end {print $1, $4-1, $5}' "$GFF_FILE" > "${PREFIX}.bed"
+    '$1==chrom && $3=="exon" &&  $4>=start && $5<=end {print $1, $4, $5}' "$GFF_FILE" > "${PREFIX}.bed"
 
     echo "extracting the sequences from bed file........"
     bedtools getfasta -fi "$REF_GENOME" -bed "${PREFIX}.bed" -fo "${PREFIX}_exons.seqs"
