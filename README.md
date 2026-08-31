@@ -1,5 +1,5 @@
 # Searching Candidate Gene
-> ***Note*** : I am using local HPCC server's NCBI database to run BLASTn.
+> ***Note*** : I am using local HPCC server's NCBI database to run BLASTn. This contains bash scripts and R codes to achieve the objective.
 ## Overview
 
 This workflow identifies potential candidate genes within a genomic region of interest by:
@@ -15,7 +15,7 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 # Example Region
 
-Suppose we found a GWAS-consistent regions on chromosome Chr2A, Chr3A, and Chr6B at position 13,160,000 bp, 2,516,000 bp, 27,209,000 bp respectively and we want to identify the genes located within 20kb of this regions. 
+Suppose we found a GWAS-consistent regions on chromosome ```Chr2A```, ```Chr3A```, and ```Chr6B``` at position ```13,160,000 bp```, ```2,516,000 bp```, ```27,209,000 bp``` respectively and we want to identify the genes located within ```20kb``` of this regions. 
 
 | Chromosome | Position (bp) | Position - 10kb (Start) | Position + 10kb (End) |
 |------------|---------------|------------------|------------------|
@@ -72,7 +72,7 @@ core_nt
 ```
 
 Verify the NCBI database of HPCC server in your linux environment:
->***Note*** : On HPCC server I used, NCBI database is host-integrated with blast+ version 2.16.0 or above. So, when you load the blast+/2.16.0 NCBi database is also loaded.
+>***Note*** : On HPCC server I used, NCBI database is host-integrated with ```blast+ version 2.16.0 or above```. So, when you load the ```blast+/2.16.0``` NCBi database is also loaded.
 
 ```bash
 module load blast+/2.16.0
@@ -81,9 +81,7 @@ blastdbcmd -db core_nt -info
 
 ---
 
----
-
-# Workflow
+# Workflow for Bash Script
 
 ## Step 1. Define the Genomic Region
 
@@ -351,8 +349,12 @@ This step creates a comprehensive table containing:
 ### Required Files
 > Just download the files from linux environment and load in R. 
 ```text
-exon_blast_results.tsv
-accession_titles.tsv
+Chr2A_13150000_exon_blast_results.tsv
+Chr3A_2506000_exon_blast_results.tsv
+Chr6B_ 27199000_exon_blast_results.tsv
+Chr2A_13150000_IDs.tsv
+Chr3A_2506000_IDs.tsv
+Chr6B_27199000_IDs.tsv
 genome.gtf
 ```
 
@@ -452,8 +454,8 @@ final_df <- exon_blast_result %>%
 | Extract exon coordinates from `qseqid` | Creates a common key for merging. |
 | Join with GTF annotations | Links each exon to its genomic annotation. |
 | Extract `gene_id` | Retrieves the corresponding gene identifier from the GTF attributes column. |
-| Remove low-quality annotations | Excludes predicted, hypothetical, and chromosome-level descriptions. |
-| Apply alignment filters | Retains hits with alignment length > 30 bp and e-value < 1e-10. |
+| Remove low-quality annotations | Excludes ```predicted```, ```hypothetical```, and ```chromosome-level descriptions```. |
+| Apply alignment filters | Retains hits with alignment ```length > 30 bp``` and ```e-value < 1e-10```. |
 | Remove duplicate descriptions | Keeps unique functional annotations per exon. |
 | Retain top hits | Limits the output to the first 10 hits per exon. |
 
@@ -480,6 +482,7 @@ This table represents the final candidate-gene annotation dataset used for downs
 ---
 
 # Complete Linux Script
+>***Note***: This contains script upto the blastn and extraction of acccession titles from accession Ids. 
 
 ```bash
 #!/bin/bash
@@ -500,15 +503,15 @@ blastn -version
 
 # Important Files
 echo "lodaing files .........................................."
-GFF_FILE="/scratch/pkjok/Candidate_gene/Fianl.bionano.newID.gff"
-REF_GENOME="/scratch/pkjok/Candidate_gene/annotated_ref.fasta"
+GFF_FILE="/scratch/pkjok/Candidate_gene/genome.gtf"
+REF_GENOME="/scratch/pkjok/Candidate_gene/genome.fa"
 
 
 # Input your Chromosome and region of interest
 regions=(
-  "Chr2A 42616966 42651766"
-  "Chr2A 2516870 2551670"
-  "Chr6B 27209288 28067548" )
+  "Chr2A 13150000 13170000"
+  "Chr3A 2506000 2526000 "
+  "Chr6B 27199000 27219000" )
 
 for region in "${regions[@]}" ; do
     read -r CHROM START END <<< "$region"
@@ -529,12 +532,12 @@ for region in "${regions[@]}" ; do
 
     # running the blastn
     echo "running blastn ..............................."
-     # blastn \
-    # -query "${PREFIX}_exons.seqs" \
-    # -db core_nt \
-    # -outfmt 6 \
-    # -num_threads 32 \
-    # -out "${PREFIX}_exon_blast_results.tsv"
+     blastn \
+     -query "${PREFIX}_exons.seqs" \
+     -db core_nt \
+     -outfmt 6 \
+     -num_threads 32 \
+     -out "${PREFIX}_exon_blast_results.tsv"
 
     # getting IDS for getting the accession title
     cut -f 2 "${PREFIX}_exon_blast_results.tsv" > "${PREFIX}_IDs.tsv"
@@ -549,9 +552,3 @@ echo "Analysis completed."
 ```
 
 ---
-
-
-        ▼
-Retrieve Annotations
-  
-```
