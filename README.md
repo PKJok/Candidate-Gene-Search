@@ -176,10 +176,10 @@ Applies the following filters to each line of the GTF/GFF file:
 
 | Condition | Description |
 |------------|------------|
-| `$1 == chrom` | Chromosome name (Column 1) matches the target chromosome. |
-| `$3 == "exon"` | Feature type (Column 3) is an exon. |
-| `$4 >= start` | Exon start coordinate (Column 4) is greater than or equal to the region start position. |
-| `$5 <= end` | Exon end coordinate (Column 5) is less than or equal to the region end position. |
+| `$1 == chrom` | Chromosome name ```(Column 1)``` matches the target chromosome. |
+| `$3 == "exon"` | Feature type ```(Column 3)``` is an exon. |
+| `$4 >= start` | Exon start coordinate ```(Column 4)``` is greater than or equal to the region start position. |
+| `$5 <= end` | Exon end coordinate ```(Column 5)``` is less than or equal to the region end position. |
 
 Only exons that satisfy **all four conditions** are retained.
 
@@ -333,14 +333,12 @@ CP137586.1        Eragrostis tef cultivar Dabbi chromosome 3A
 
 ---
 
----
-
 ## Step 7. Merge BLAST Results, Annotations, and Exon Information in R
 
 After obtaining the BLAST results and accession descriptions, I used R to combine:
 
-1. BLAST alignment results (`exon_blast_results.tsv`)
-2. Accession descriptions (`accession_titles.tsv`)
+1. BLAST alignment results (`Chr2A_13150000_exon_blast_results.tsv`)
+2. Accession descriptions (`Chr2A_13150000_IDs.tsv`)
 3. Genome annotation information (`genome.gtf`)
 
 This step creates a comprehensive table containing:
