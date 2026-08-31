@@ -17,7 +17,7 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 Suppose we found a GWAS-consistent regions on chromosome Chr2A, Chr3A, and Chr6B at position 13,160,000 bp, 2,516,000 bp, 27,209,000 bp respectively and we want to identify the genes located within 20kb of this regions. 
 
-| Chromosome | Position (bp) | Position - 10kb (start) | Position + 10kb (End) |
+| Chromosome | Position (bp) | Position - 10kb (Start) | Position + 10kb (End) |
 |------------|---------------|------------------|------------------|
 |Chr2A | 13,160,000 | 13,150,000 | 13,170,000 |
 | Chr3A | 2,516,000 | 2,506,000 | 2,526,000 |
@@ -93,7 +93,7 @@ We formed a bash array contatining 3 string elements. Each element holds space-s
 regions=(
   "Chr2A 13150000 13170000"
   "Chr3A 2506000 2526000 "
-  "Chr6B 27199000  27219000" )
+  "Chr6B 27199000 27219000" )
 ```
 
 ---
@@ -125,33 +125,39 @@ PREFIX="${CHROM}_${START}"
 ````
 #### Combines the chromosome name and start coordinate with an underscore (e.g.,```Chr2A_13150000```) to create unique prefix for naming file.
 ---
-## Step 2. Extract Exons from the Region
+## Step 3. Extract Exons from the Region
 
-Extract exon coordinates located within the target interval.
+Extract exon coordinates located within the target interval. ```$3==="exon"``` ensures we are only extracting the exons from GTF/GFF file.
 
 ```bash
 awk -v OFS="\t" \
--v chr="$CHR" \
+-v chrom="$CHROM" \
 -v start="$START" \
 -v end="$END" \
-'$1==chr && $3=="exon" && $4>=start && $5<=end {print $1,$4,$5}' \
-genome.gtf > region_exons.bed
+'$1==chrom && $3=="exon" && $4>=start && $5<=end {print $1,$4,$5}' \
+genome.gtf > "${PREFIX}.bed"
 ```
 
 Output:
 
 ```text
-region_exons.bed
+Chr2A_13150000.bed
+Chr3A_2506000.bed
+Chr6B_27199000.bed
 ```
 
 Example:
 
 ```text
+$more Chr2A_13150000.bed
+```
+```bash
 Chr2A 13154242 13156423
 Chr2A 13167915 13168522
 Chr2A 13168927 13169155
 Chr2A 13169256 13169504
 Chr2A 13169597 13169647
+.....
 ```
 ### Understanding the `awk` Command ###
 
@@ -161,19 +167,19 @@ Sets the **Output Field Separator (OFS)** to a tab character (`\t`). This ensure
 
 ---
 
-#### `-v chr="$CHR" -v start="$START" -v end="$END"`
+#### `-v chrom="$CHROM" -v start="$START" -v end="$END"`
 
-Passes the shell variables (`$CHR`, `$START`, and `$END`) into `awk` as internal variables (`chr`, `start`, and `end`), allowing them to be used within the filtering conditions.
+Passes the shell variables (`$CHROM`, `$START`, and `$END`) into `awk` as internal variables (`chrom`, `start`, and `end`), allowing them to be used within the filtering conditions.
 
 ---
 
-#### `$1==chr && $3=="exon" && $4>=start && $5<=end`
+#### `$1==chrom && $3=="exon" && $4>=start && $5<=end`
 
 Applies the following filters to each line of the GTF/GFF file:
 
 | Condition | Description |
 |------------|------------|
-| `$1 == chr` | Chromosome name (Column 1) matches the target chromosome. |
+| `$1 == chrom` | Chromosome name (Column 1) matches the target chromosome. |
 | `$3 == "exon"` | Feature type (Column 3) is an exon. |
 | `$4 >= start` | Exon start coordinate (Column 4) is greater than or equal to the region start position. |
 | `$5 <= end` | Exon end coordinate (Column 5) is less than or equal to the region end position. |
@@ -201,19 +207,25 @@ Retrieve nucleotide sequences corresponding to the exon coordinates.
 
 ```bash
 bedtools getfasta \
--fi genome.fa \
--bed region_exons.bed \
--fo region_exons.fa
+ -fi genome.fa \
+ -bed "${PREFIX}.bed" \
+ -fo "${PREFIX}_exons.seqs"
+
 ```
 
 Output:
 
 ```text
-region_exons.fa
+Chr2A_13150000_exons.seqs
+Chr3A_2506000_exons.seqs
+Chr6B_ 27199000_exons.seqs
 ```
 
 Example:
 
+```text
+$more Chr2A_13150000_exons.seqs
+```
 ```fasta
 >Chr2A:13154242-13156423
 GCCAAGTAGAGAGGTCCAACAGATAGTGTCAACGAAATGGAAATTAACAAAGCCGATCAA
@@ -221,7 +233,7 @@ CAGTTATCAAAATTAGGCCACTCCGTGCATGCTGGATGAACT..................
 >Chr2A:13167915-13168522
 TTGGAATACCGTTTTTGTTCCTGAGCCGGAAGATCCCATACGCACTTTTCCAGCGACAAA
 ACTCCAAAAAGAACACAGATATGCTCATCCGACGGCGTAAAC..................
-..........
+......
 ```
 
 ---
@@ -232,20 +244,26 @@ Search the extracted exon sequences against the NCBI nucleotide database.
 
 ```bash
 blastn \
--query region_exons.fa \
+-query "${PREFIX}_exons.seqs"  \
 -db core_nt \
 -outfmt 6 \
 -num_threads 32 \
--out exon_blast_results.tsv
+-out "${PREFIX}_exon_blast_results.tsv"
+
 ```
 
 Output:
 
 ```text
-exon_blast_results.tsv
+Chr2A_13150000_exon_blast_results.tsv
+Chr3A_2506000_exon_blast_results.tsv
+Chr6B_ 27199000_exon_blast_results.tsv
 ```
 Example:
 
+```text
+$more Chr2A_13150000_exon_blast_results.tsv
+```
 ```.tsv file
 Chr2A:13154242-13156423 CP137581.1      86.735  294     24      3       3       281     10615510        10615217        1.19e-80        313
 Chr2A:13167915-13168522 CP137580.1      91.150  113     10      0       7       119     13473675        13473563        2.64e-33        154
@@ -258,15 +276,20 @@ Chr2A:13167915-13168522 CP137580.1      91.150  113     10      0       7       
 Since ```blastn``` outputs only NCBI accession IDs, we must retrieve the descriptions for each ID. We will first take out the all unique NCBI accesion IDs from the output.
 
 ```bash
-cut -f2 exon_blast_results.tsv | sort -u > accession_ids.tsv
+cut -f 2 "${PREFIX}_exon_blast_results.tsv" > "${PREFIX}_IDs.tsv"
 ```
 
 Output:
 
 ```text
-accession_ids.tsv
+Chr2A_13150000_IDs.tsv
+Chr3A_2506000_IDs.tsv
+Chr6B_27199000_IDs.tsv
 ```
 Example:
+```text
+$more Chr2A_13150000_IDs.tsv
+```
 
 ```_ids.tsv
 NM_001365546.1
@@ -283,20 +306,24 @@ CP137586.1
 Obtain accession titles and descriptions for the BLAST hits.
 
 ```bash
-blastdbcmd \
--db core_nt \
--entry_batch accession_ids.tsv \
--outfmt "%a\t%t" \
-> accession_titles.tsv
+ blastdbcmd -db core_nt \
+ -entry_batch "${PREFIX}_IDs.tsv" \
+ -outfmt "%a\t%t" > "${PREFIX}_titles.tsv"
+
 ```
 
 Output:
 
 ```text
-accession_titles.tsv
+Chr2A_13150000_titles.tsv
+Chr3A_2506000_titles.tsv
+Chr6B_27199000_titles.tsv
 ```
 
 Example:
+```text
+$more Chr2A_13150000_titles.tsv
+```
 
 ```text
 NM_001365546.1        Zea mays Auxin response factor 3 (LOC100502387), mRNA
@@ -304,6 +331,7 @@ XM_987654        ABC transporter family protein
 PP763331.1        Cymbopogon flexuosus clone 1907 auxin response factor ARF12 mRNA, complete cds
 NM_001361952.1        Zea mays auxin response factor 11 (ARF11) gene, complete cds
 CP137586.1        Eragrostis tef cultivar Dabbi chromosome 3A
+.....
 ```
 
 ---
