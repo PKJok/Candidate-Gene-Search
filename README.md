@@ -15,7 +15,7 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 # Example Region
 
-Suppose we found a GWAS-consistent regions on chromosome ```Chr2A```, ```Chr3A```, and ```Chr6B``` at position ```13,160,000 bp```, ```2,516,000 bp```, ```27,209,000 bp``` respectively and we want to identify the genes located within ```20kb``` of this regions. 
+Suppose we found GWAS-consistent regions on chromosome ```Chr2A```, ```Chr3A```, and ```Chr6B``` at position ```13,160,000 bp```, ```2,516,000 bp```, ```27,209,000 bp``` respectively and we want to identify the genes located within ```20 kb``` of these regions. 
 
 | Chromosome | Position (bp) | Position - 10kb (Start) | Position + 10kb (End) |
 |------------|---------------|------------------|------------------|
@@ -72,7 +72,7 @@ core_nt
 ```
 
 Verify the NCBI database of HPCC server in your linux environment:
->***Note*** : On HPCC server I used, NCBI database is host-integrated with ```blast+ version 2.16.0 or above```. So, when you load the ```blast+/2.16.0``` NCBi database is also loaded.
+>***Note*** : On HPCC server I used, NCBI database is host-integrated with ```blast+ version 2.16.0 or above```. So, when you load the ```blast+/2.16.0``` NCBI database is also loaded.
 
 ```bash
 module load blast+/2.16.0
@@ -120,7 +120,7 @@ read -r CHROM START END <<< "$region"
 ``` bash
 PREFIX="${CHROM}_${START}"
 ````
-#### Combines the chromosome name and start coordinate with an underscore (e.g.,```Chr2A_13150000```) to create unique prefix for naming file.
+#### Combines the chromosome name and start coordinate with an underscore (e.g.,```Chr2A_13150000```) to create a unique prefix for naming files.
 ---
 ## Step 3. Extract Exons from the Region
 
@@ -198,7 +198,7 @@ Prints the selected records og GTF/GFF file in a **3-column BED format**:
 > The resulting file can be directly used as input for tools such as **BEDTools**.
 ---
 
-## Step 3. Extract Exon Sequences
+## Step 4. Extract Exon Sequences
 
 Retrieve nucleotide sequences corresponding to the exon coordinates.
 
@@ -254,7 +254,7 @@ Output:
 ```text
 Chr2A_13150000_exon_blast_results.tsv
 Chr3A_2506000_exon_blast_results.tsv
-Chr6B_ 27199000_exon_blast_results.tsv
+Chr6B_27199000_exon_blast_results.tsv
 ```
 Example:
 
@@ -333,144 +333,227 @@ CP137586.1        Eragrostis tef cultivar Dabbi chromosome 3A
 
 ---
 
-## Step 7. Merge BLAST Results, Annotations, and Exon Information in R
 
-After obtaining the BLAST results and accession descriptions, I used R to combine:
+# Automating Candidate Gene Annotation in R
+>***Note***: Full R script is provided below this ```README``` file
+## Overview
 
-1. BLAST alignment results (`Chr2A_13150000_exon_blast_results.tsv`)
-2. Accession descriptions (`Chr2A_13150000_IDs.tsv`)
-3. Genome annotation information (`genome.gtf`)
+This script automatically:
 
-This step creates a comprehensive table containing:
-- Exon IDs, BLAST hits, Functional descriptions, Alignment statistics (e-value, percent identity, bitscore, etc.)
+1. Detects all BLAST result files in the working directory.
+2. Loads the corresponding accession descriptions.
+3. Merges BLAST results with genome annotations.
+4. Filters low-quality and uninformative hits.
+5. Saves a candidate gene table for each genomic region.
 
-### Required Files
-> Just download the files from linux environment and load in R. 
+---
+> **Note:** Before running the R workflow, it is recommended to create a dedicated R project to keep all files organized and ensure reproducibility.
+
+### 🚨 IMPORTANT: Creating a New R Project
+
+1. In **RStudio**, click **File** → **New Project...**
+2. Select **New Directory**.
+3. Click **New Project**.
+4. Enter a name for your project.
+5. Choose the location where you would like the project folder to be created.
+6. Click **Create Project**.
+
+
+### 📌Organizing Project Files
+
+After the project is created:
+
+1. Open the newly created project.
+2. Copy or upload all required input files into the project directory, including:
+   - BLAST output files (`*_exon_blast_results.tsv`)
+   - Accession title files (`*_titles.tsv`)
+   - Genome annotation file (`genome.gtf`)
+     
+### Example:
 ```text
 Chr2A_13150000_exon_blast_results.tsv
 Chr3A_2506000_exon_blast_results.tsv
-Chr6B_ 27199000_exon_blast_results.tsv
-Chr2A_13150000_IDs.tsv
-Chr3A_2506000_IDs.tsv
-Chr6B_27199000_IDs.tsv
+Chr6B_27199000_exon_blast_results.tsv
+Chr2A_13150000_titles.tsv
+Chr3A_2506000_titles.tsv
+Chr6B_27199000_titles.tsv
 genome.gtf
 ```
 
-### Load Required Package
+## Load Required Package
 
 ```r
-install.packages("tidyverse")
 library(tidyverse)
 ```
 
-### Read Input Files
+---
+
+## Identify File Prefixes
 
 ```r
-# load BLASTn output in R environemt
-exon_blast_result <- read.table("exon_blast_results.tsv")
-
-# load accession descriptions in R
-accession_titles <- read_tsv("accession_titles.tsv", col_names = FALSE) %>%
-  separate(X1, into = c("id", "description"),sep = "\\\\t|\\t")
-
-# load genome annotation file in R
-gtf_file <- read.table("genome.gtf", sep = "\t", header = FALSE)
-
-# setting the column names of gtf_file
-colnames(gtf_file) <- c(
-  "seqid", "source", "type",
-  "start", "end", "score",
-  "strand", "phase", "attribute")
+prefixes <- list.files(pattern = "_exon_blast_results.tsv") %>%
+  str_remove("_exon_blast_results.tsv")
 ```
 
-### Prepare the GTF Annotation
+This extracts prefixes from BLAST result files.
 
-Create a genomic location identifier that can be matched to the exon coordinates extracted earlier.
+### Example
+
+Input files:
+
+```text
+Chr2A_13150000_exon_blast_results.tsv
+Chr3A_2506000_exon_blast_results.tsv
+Chr6B_27199000_exon_blast_results.tsv
+```
+
+Extracted prefixes:
+
+```output
+Chr2A_13150000
+Chr3A_2506000
+Chr6B_27199000
+```
+
+---
+
+## Load and Prepare the GTF File
 
 ```r
+gtf_file <- read.table("genome.gtf", sep = "\t", header = FALSE)
+
+colnames(gtf_file) <- c(
+  "seqid","source","type","start","end",
+  "score","strand","phase","attribute"
+)
+
 gtf_file <- gtf_file %>%
   mutate(location = paste0(start, "-", end)) %>%
   select(location, attribute, type)
 ```
 
-### Assign BLAST Column Names
+The `location` column is used to match exon coordinates between the BLAST results and genome annotation.
 
-The BLAST output was generated using `-outfmt 6`, which contains 12 standard columns.
+---
+
+## BLAST Column Names
 
 ```r
 outfmt6_colnames <- c(
-  "qseqid", "sseqid", "pident",
-  "length", "mismatch", "gapopen",
-  "qstart", "qend", "sstart",
-  "send", "evalue", "bitscore")
-
-colnames(exon_blast_result) <- outfmt6_colnames
+  "qseqid", "sseqid", "pident", "length",
+  "mismatch", "gapopen", "qstart", "qend",
+  "sstart", "send", "evalue", "bitscore"
+)
 ```
 
-### Merge All Information
+These are the standard column names for BLAST output generated using `-outfmt 6`.
+
+---
+
+## Candidate Gene Processing Function
 
 ```r
-final_df <- exon_blast_result %>%
- left_join(
-    accession_titles,
-    by = c("sseqid" = "id"),
-    relationship = "many-to-many") %>% 
-  mutate(
-    location = str_split_i(qseqid, ":", 2)) %>%
-  left_join(
-    gtf_file, by = "location",relationship = "many-to-many") %>%
-  mutate(
-    gene_id = sub(
-      ".*gene_id ([^;]+);.*",
-      "\\1",
-      attribute)) %>%
-  select(
-    !c(location, sstart, send, attribute)) %>%
-  filter(
+process_candidate_genes <- function(prefix){
+  
+  exon_blast_result <- read.table(
+    paste0(prefix, "_exon_blast_results.tsv"))
+    
+  colnames(exon_blast_result)<-outfmt6_colnames
+  
+  accession_titles <- read_tsv(paste0(prefix, "_titles.tsv"),   # getting the titles loaded 
+                               col_names = FALSE) %>%
+    separate(X1,
+             into = c("id", "description"),
+             sep = "\\\\t|\\t")
+
+
+    final_df<- exon_blast_result %>%
+    left_join(accession_titles,
+            by = c("sseqid" = "id"),
+            relationship = "many-to-many") %>%
+    mutate(location = str_split_i(qseqid, ":", 2)) %>%
+    left_join(gtf_file,
+            by = "location",
+            relationship = "many-to-many") %>%
+    select(!c(location, sstart, send, attribute)) %>%
+    filter(
     type == "exon",
-    !str_detect(description, "PREDICTED"),
-    !str_detect(description, "hypothetical"),
-    !str_detect(description, "chromosome"),
-    !str_detect(description, "predicted protein")) %>% # filtering out the "predicted and Hypothetical" 
-  filter(
-    length > 30,
-    evalue < 1e-10) %>%
-  distinct(
-    qseqid,
-    description,
-    .keep_all = TRUE) %>%
-  group_by(qseqid) %>%
-  slice_head(n = 5) %>%  # this only keeps 5 results from the single query
-  ungroup()
+    !str_detect(description, regex("PREDICTED|hypothetical|chromosome|predicted protein",
+                                   ignore_case = TRUE))) %>%
+    filter(length > 30,evalue < 1e-10) %>%
+    distinct(qseqid,description,.keep_all = TRUE) %>%
+    group_by(qseqid) %>%
+    slice_head(n = 5) %>%
+    ungroup()
+    
+    write_tsv(final_df,paste0(prefix, "_candidate_genes.tsv") )
+    
+    return(final_df)
+}
 ```
 
-### Explanation of the R Workflow
+The function performs the following steps:
 
 | Step | Purpose |
 |--------|----------|
-| Join BLAST hits with accession titles | Adds functional descriptions to each BLAST hit. |
-| Extract exon coordinates from `qseqid` | Creates a common key for merging. |
-| Join with GTF annotations | Links each ```exon``` to its genomic annotation. |
-| Extract `gene_id` | Retrieves the corresponding gene identifier from the GTF attributes column. |
-| Remove low-quality annotations | Excludes ```predicted```, ```hypothetical```, and ```chromosome-level descriptions```. |
-| Apply alignment filters | Retains hits with alignment ```length > 30 bp``` and ```e-value < 1e-10```. |
-| Remove duplicate descriptions | Keeps unique functional annotations per exon. |
-| Retain top hits | Limits the output to the first 10 hits per exon. |
+| Load BLAST results | Reads `*_exon_blast_results.tsv` |
+| Load accession descriptions | Reads `*_titles.tsv` |
+| Merge data | Combines BLAST hits with descriptions |
+| Match exon coordinates | Links BLAST hits to GTF annotations |
+| Filter results | Removes predicted, hypothetical, and chromosome-level matches |
+| Quality filtering | Keeps hits with `length > 30` and `evalue < 1e-10` |
+| Remove duplicates | Keeps unique descriptions per exon |
+| Retain top hits | Keeps the first 5 hits per exon |
+| Save output | Writes `*_candidate_genes.tsv` |
 
-### Output
+---
+
+## Save the Final Results
 
 ```r
-head(final_df)
+write_tsv(
+  final_df,
+  paste0(prefix, "_candidate_genes.tsv")
+)
 ```
-Example:
+
+### Example Outputs
 
 ```text
-qseqid	sseqid	pident	length	mismatch	gapopen	qstart	qend	sstart	send	evalue	bitscore	description	exon
-Chr3B:8825429-8826763	CP137587.1	80.846	851	105	23	499	1303	24628072	24627234	4.28E-171	616	Eragrostis tef cultivar Dabbi chromosome 3B	Chr3B_Cda01350.1-2
-Chr3B:8825429-8826763	CP137586.1	81.356	708	76	26	652	1312	26067452	26066754	7.41E-144	525	Eragrostis tef cultivar Dabbi chromosome 3A	Chr3B_Cda01350.1-2
-Chr3B:8825429-8826873	CP137587.1	79.49	980	140	26	499	1431	24628072	24627107	2.75E-178	640	Eragrostis tef cultivar Dabbi chromosome 3B	Chr3B_Cda01350.2-2
-Chr3B:8825429-8826873	CP137586.1	81.356	708	76	26	652	1312	26067452	26066754	8.04E-144	525	Eragrostis tef cultivar Dabbi chromosome 3A	Chr3B_Cda01350.2-2
-Chr3B:8833583-8833738	CP137586.1	84.314	153	12	7	1	153	26059337	26059197	1.05E-28	139	Eragrostis tef cultivar Dabbi chromosome 3A	Chr3B_Cda01352.1-1
+Chr2A_13150000_candidate_genes.tsv
+Chr3A_2506000_candidate_genes.tsv
+Chr6B_27199000_candidate_genes.tsv
+```
+
+---
+
+## Run the Analysis for All Regions
+
+```r
+lapply(prefixes, process_candidate_genes)
+```
+
+This automatically processes every BLAST result file in the working directory and generates a corresponding candidate gene table.
+
+### Final Output
+
+Each output file contains:
+
+- Exon IDs
+- BLAST accession IDs
+- Functional descriptions
+- Alignment statistics
+- Candidate gene annotations
+
+These files serve as the final candidate gene datasets for downstream biological interpretation.
+
+### Example:
+
+```text
+qseqid	sseqid	pident	length	mismatch	gapopen	qstart	qend	evalue	bitscore	description	type
+LG03:52986100-52986214	NM_001409131.1	87.5	88	8	3	23	110	1.2e-16	99	Oryza sativa Japonica Group cyclin-B1-1-like (LOC4327547), transcript variant 1, mRNA	exon
+LG03:52986100-52986214	NM_001409132.1	87.5	88	8	3	23	110	1.2e-16	99	Oryza sativa Japonica Group cyclin-B1-1-like (LOC4327547), transcript variant 2, mRNA	exon
+LG03:52988801-52988950	NM_001143365.1	90.604	149	14	0	1	149	1.65e-46	198	Zea mays uncharacterized LOC100216987 (LOC100216987), mRNA	exon
 ....
 ```
 
@@ -550,3 +633,68 @@ echo "Analysis completed."
 ```
 
 ---
+# Complete R Script
+```
+# load the library
+library(tidyverse)
+
+# list out our blast result files and extract the prefixes from them
+prefixes<-list.files(pattern = "_exon_blast_results.tsv")%>%
+  str_remove("_exon_blast_results.tsv")
+
+
+# load the gtf file
+
+gtf_file<-read.table("genome.gtf", sep = "\t", header = F)
+colnames(gtf_file)<-c("seqid","source","type","start","end","score","strand",
+                      "phase","attribute")
+
+# load the column names of outfmt6
+outfmt6_colnames<-c("qseqid", "sseqid", "pident", "length", "mismatch", 
+                    "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+
+
+gtf_file<-gtf_file%>%
+  mutate(location=paste0(start,"-",end))%>%
+  select(c(location,attribute,type))
+
+process_candidate_genes <- function(prefix){
+  
+  exon_blast_result <- read.table(
+    paste0(prefix, "_exon_blast_results.tsv"))
+    
+  colnames(exon_blast_result)<-outfmt6_colnames
+  
+  accession_titles <- read_tsv(paste0(prefix, "_titles.tsv"),
+                               col_names = FALSE) %>%
+    separate(X1,
+             into = c("id", "description"),
+             sep = "\\\\t|\\t")
+
+
+    final_df<- exon_blast_result %>%
+    left_join(accession_titles,
+            by = c("sseqid" = "id"),
+            relationship = "many-to-many") %>%
+    mutate(location = str_split_i(qseqid, ":", 2)) %>%
+    left_join(gtf_file,
+            by = "location",
+            relationship = "many-to-many") %>%
+    select(!c(location, sstart, send, attribute)) %>%
+    filter(
+    type == "exon",
+    !str_detect(description, regex("PREDICTED|hypothetical|chromosome|predicted protein",
+                                   ignore_case = TRUE))) %>%
+    filter(length > 30,evalue < 1e-10) %>%
+    distinct(qseqid,description,.keep_all = TRUE) %>%
+    group_by(qseqid) %>%
+    slice_head(n = 5) %>%
+    ungroup()
+    
+    write_tsv(final_df,paste0(prefix, "_candidate_genes.tsv") )
+    
+    return(final_df)
+}
+
+lapply(prefixes, process_candidate_genes) 
+```
