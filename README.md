@@ -1,7 +1,8 @@
 # Searching Candidate Gene
-### I have provided full bash and R scripts below this README.md file.
+### I have provided full bash and R scripts below this README.md file. ###
 > ***Note*** : I am using local HPCC server's NCBI database to run BLASTn. This contains bash scripts and R codes to achieve the objective.
-##📖 Overview
+
+## 📖 Overview
 
 This workflow identifies potential candidate genes within a genomic region of interest by:
 
