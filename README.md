@@ -1,6 +1,6 @@
 # Searching Candidate Gene
 > ***Note*** : I am using local HPCC server's NCBI database to run BLASTn. This contains bash scripts and R codes to achieve the objective.
-## Overview
+##📖 Overview
 
 This workflow identifies potential candidate genes within a genomic region of interest by:
 
@@ -13,7 +13,7 @@ This workflow identifies potential candidate genes within a genomic region of in
 
 ---
 
-# Example Region
+# 🧬 Example Region
 
 Suppose we found GWAS-consistent regions on chromosome ```Chr2A```, ```Chr3A```, and ```Chr6B``` at position ```13,160,000 bp```, ```2,516,000 bp```, ```27,209,000 bp``` respectively and we want to identify the genes located within ```20 kb``` of these regions. 
 
@@ -27,7 +27,7 @@ Suppose we found GWAS-consistent regions on chromosome ```Chr2A```, ```Chr3A```,
 
 ---
 
-# Required Input Files
+# 📝 Required Input Files
 
 ## 1. Reference Genome
 
@@ -37,7 +37,6 @@ Genome sequence in FASTA format.
 genome.fa
 ```
 
----
 
 ## 2. Genome Annotation File
 
@@ -47,7 +46,6 @@ Genome annotation in GTF/GFF format.
 genome.gtf
 ```
 
----
 
 ## 3. Software Requirements
 
@@ -80,9 +78,9 @@ blastdbcmd -db core_nt -info
 ```
 
 ---
-
-# Workflow for Bash Script
->***Note***: Whole script is provided below this read.md file.
+---
+# 💻 Workflow for Bash Script
+>***Note***: Whole script is provided below this ```README.md``` file.
 ## Step 1. Define the Genomic Region
 
 We formed a bash array contatining 3 string elements. Each element holds space-separated genomic coordinates. 
@@ -94,7 +92,6 @@ regions=(
   "Chr6B 27199000 27219000" )
 ```
 
----
 ## Step 2. Running the loop to extract the sequences from all the regions
 We also formed a ```for``` ..... ```done``` loop that iterates over each element in the ```regions``` array.
 
@@ -111,12 +108,12 @@ for region in "${regions[@]}" ; do
  done
 
 ```
-### Understanding the ```loop``` code
+### ➡️Understanding the ```loop``` code
 ``` bash
 read -r CHROM START END <<< "$region"
 ```
 #### This ```read``` command with a Here-String (```<<<```) splits the ```$region``` string by spaces into three distinct variables: ```$CHROM```,```$START```,and ```$END```.
-
+---
 ``` bash
 PREFIX="${CHROM}_${START}"
 ````
@@ -156,7 +153,7 @@ Chr2A 13169256 13169504
 Chr2A 13169597 13169647
 .....
 ```
-### Understanding the `awk` Command ###
+### ➡️ Understanding the `awk` Command ###
 
 #### `-v OFS="\t"`
 
@@ -235,7 +232,7 @@ ACTCCAAAAAGAACACAGATATGCTCATCCGACGGCGTAAAC..................
 
 ---
 
-## Step 4. Run BLAST Search
+## Step 4.⚡Run BLAST Search
 
 Search the extracted exon sequences against the NCBI nucleotide database.
 
@@ -268,7 +265,7 @@ Chr2A:13167915-13168522 CP137580.1      91.150  113     10      0       7       
 ```
 ---
 
-## Step 5. Extract Unique Accession IDs
+## Step 5. 📝 Extract Unique Accession IDs
 
 Since ```blastn``` outputs only NCBI accession IDs, we must retrieve the descriptions for each ID. We will first take out the all unique NCBI accesion IDs from the output.
 
@@ -298,7 +295,7 @@ CP137586.1
 ```
 ---
 
-## Step 6. Retrieve Hit Annotations
+## Step 6. 📝 Retrieve Hit Annotations
 
 Obtain accession titles and descriptions for the BLAST hits.
 
@@ -334,7 +331,7 @@ CP137586.1        Eragrostis tef cultivar Dabbi chromosome 3A
 ---
 
 
-# Automating Candidate Gene Annotation in R
+# ⚡Automating Candidate Gene Annotation in R
 >***Note***: Full R script is provided below this ```README``` file
 ## Overview
 
@@ -380,7 +377,7 @@ Chr6B_27199000_titles.tsv
 genome.gtf
 ```
 
-## Load Required Package
+## Step 1. Load Required Package
 
 ```r
 library(tidyverse)
@@ -388,7 +385,7 @@ library(tidyverse)
 
 ---
 
-## Identify File Prefixes
+## Step 2. Identify File Prefixes
 
 ```r
 prefixes <- list.files(pattern = "_exon_blast_results.tsv") %>%
@@ -417,7 +414,7 @@ Chr6B_27199000
 
 ---
 
-## Load and Prepare the GTF File
+## Step 3. Load and Prepare the GTF File
 
 ```r
 gtf_file <- read.table("genome.gtf", sep = "\t", header = FALSE)
@@ -436,7 +433,7 @@ The `location` column is used to match exon coordinates between the BLAST result
 
 ---
 
-## BLAST Column Names
+## Step 4. BLAST Column Names
 
 ```r
 outfmt6_colnames <- c(
@@ -450,7 +447,7 @@ These are the standard column names for BLAST output generated using `-outfmt 6`
 
 ---
 
-## Candidate Gene Processing Function
+## Step 5.Candidate Gene Processing Function
 
 ```r
 process_candidate_genes <- function(prefix){
@@ -508,7 +505,7 @@ The function performs the following steps:
 
 ---
 
-## Save the Final Results
+## Step 6. Save the Final Results
 
 ```r
 write_tsv(
